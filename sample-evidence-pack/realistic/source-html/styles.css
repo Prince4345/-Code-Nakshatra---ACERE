@@ -1,0 +1,288 @@
+:root {
+  color: #202124;
+  background: #e7e7e7;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 28px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.035) 1px, transparent 1px),
+    linear-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px),
+    #e9e9e9;
+  background-size: 18px 18px;
+}
+
+.page {
+  position: relative;
+  width: 820px;
+  min-height: 1120px;
+  margin: 0 auto;
+  padding: 34px 38px;
+  background: #fff;
+  border: 1px solid #b8b8b8;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+}
+
+.page::after {
+  content: "FICTIONAL OCR TEST SAMPLE";
+  position: absolute;
+  right: 22px;
+  bottom: 12px;
+  color: #777;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+
+.doc-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #111;
+}
+
+.brand-block {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.mark {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #111;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.issuer {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.issuer small {
+  display: block;
+  margin-top: 5px;
+  color: #555;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.doc-title {
+  min-width: 230px;
+  text-align: right;
+}
+
+.doc-title h1 {
+  margin: 0;
+  color: #111;
+  font-size: 24px;
+  text-transform: uppercase;
+}
+
+.doc-title .sub {
+  margin-top: 8px;
+  color: #555;
+  font-size: 12px;
+}
+
+.barcode {
+  margin-top: 12px;
+  height: 34px;
+  background: repeating-linear-gradient(90deg, #111 0 2px, transparent 2px 5px, #111 5px 6px, transparent 6px 10px);
+}
+
+.qr {
+  width: 82px;
+  height: 82px;
+  border: 5px solid #111;
+  background:
+    linear-gradient(90deg, #111 12px, transparent 12px 20px, #111 20px 26px, transparent 26px),
+    linear-gradient(#111 10px, transparent 10px 18px, #111 18px 28px, transparent 28px),
+    #fff;
+  background-size: 28px 28px;
+}
+
+.meta-grid,
+.two-col,
+.three-col {
+  display: grid;
+  gap: 12px;
+}
+
+.meta-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 18px 0;
+}
+
+.two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.three-col {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.field,
+.address,
+.note-box {
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid #c8c8c8;
+  background: #fafafa;
+}
+
+.field label,
+.address label,
+.note-box label {
+  display: block;
+  margin-bottom: 5px;
+  color: #666;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.field strong,
+.address strong,
+.note-box strong {
+  display: block;
+  color: #111;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.address {
+  min-height: 130px;
+}
+
+.section {
+  margin-top: 18px;
+}
+
+.section h2 {
+  margin: 0 0 8px;
+  padding: 7px 10px;
+  color: #fff;
+  background: #1f2937;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+th,
+td {
+  padding: 9px 8px;
+  border: 1px solid #c6c6c6;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #111;
+  background: #e6e8eb;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.right {
+  text-align: right;
+}
+
+.stamp-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.stamp {
+  width: 180px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  border: 3px double #8b1e1e;
+  border-radius: 50%;
+  color: #8b1e1e;
+  font-weight: 800;
+  font-size: 12px;
+  text-align: center;
+  transform: rotate(-6deg);
+}
+
+.signature {
+  width: 260px;
+  padding-top: 55px;
+  border-bottom: 1px solid #111;
+  color: #333;
+  font-size: 12px;
+  text-align: center;
+}
+
+.fineprint {
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid #c8c8c8;
+  color: #555;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.muted {
+  color: #666;
+}
+
+.gov-band {
+  padding: 12px 16px;
+  border: 2px solid #111;
+  background: #f1f3f5;
+  text-align: center;
+}
+
+.gov-band h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ledger {
+  font-family: "Courier New", monospace;
+}
+
+@media print {
+  body {
+    padding: 0;
+    background: #fff;
+  }
+
+  .page {
+    width: auto;
+    min-height: auto;
+    border: 0;
+    box-shadow: none;
+  }
+}

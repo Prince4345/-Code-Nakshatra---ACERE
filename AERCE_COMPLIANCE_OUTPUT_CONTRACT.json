@@ -1,0 +1,18 @@
+{
+  "invoice_id": "STRING | REQUIRED",
+  "product_category": "STRING | REQUIRED",
+  "destination_eu_country": "STRING | REQUIRED",
+  "cbam": {
+    "status": "COMPLIANT | NON_COMPLIANT | RISK | NOT_APPLICABLE",
+    "reported_emissions_tCO2": "NUMBER | NULL",
+    "default_value_triggered": "BOOLEAN",
+    "non_compliance_reasons": "ARRAY OF STRINGS"
+  },
+  "eudr": {
+    "status": "COMPLIANT | NON_COMPLIANT | NOT_APPLICABLE",
+    "geolocation_provided": "BOOLEAN",
+    "deforestation_cutoff_verified": "BOOLEAN",
+    "non_compliance_reasons": "ARRAY OF STRINGS"
+  },
+  "overall_shipment_risk": "LOW | MEDIUM | HIGH"
+}

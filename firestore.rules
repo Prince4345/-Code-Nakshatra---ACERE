@@ -1,0 +1,251 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function hasRole(role) {
+      return signedIn() && userDoc().data.role == role;
+    }
+
+    function isVerifier() {
+      return hasRole('verifier');
+    }
+
+    function isImporter() {
+      return hasRole('importer');
+    }
+
+    function isExporter() {
+      return hasRole('exporter');
+    }
+
+    function canReadOwnedRecord(ownerId) {
+      return signedIn() && (
+        request.auth.uid == ownerId ||
+        isVerifier() ||
+        isImporter()
+      );
+    }
+
+    function canWriteOwnedCreate() {
+      return signedIn() &&
+        request.resource.data.ownerId == request.auth.uid;
+    }
+
+    function immutableOwnedFields() {
+      return request.resource.data.ownerId == resource.data.ownerId &&
+        request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    function shipmentLocked() {
+      return resource.data.status == 'APPROVED';
+    }
+
+    function validRole(role) {
+      return role == 'exporter' || role == 'verifier' || role == 'importer';
+    }
+
+    function shipmentDoc(shipmentId) {
+      return get(/databases/$(database)/documents/shipments/$(shipmentId));
+    }
+
+    function canManageVerificationCase(shipmentId) {
+      return signedIn() && (
+        shipmentDoc(shipmentId).data.ownerId == request.auth.uid ||
+        isVerifier()
+      );
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if signedIn() &&
+        request.auth.uid == userId &&
+        request.resource.data.email == request.auth.token.email &&
+        validRole(request.resource.data.role);
+      allow update: if signedIn() &&
+        request.auth.uid == userId &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    match /companyProfiles/{userId} {
+      allow read: if signedIn() && (
+        request.auth.uid == userId ||
+        isVerifier() ||
+        isImporter()
+      );
+      allow create, update: if signedIn() &&
+        request.auth.uid == userId &&
+        request.resource.data.ownerId == request.auth.uid;
+    }
+
+    match /suppliers/{docId} {
+      allow read: if canReadOwnedRecord(resource.data.ownerId);
+      allow create: if canWriteOwnedCreate();
+      allow update: if signedIn() &&
+        resource.data.ownerId == request.auth.uid &&
+        immutableOwnedFields();
+    }
+
+    match /plots/{docId} {
+      allow read: if canReadOwnedRecord(resource.data.ownerId);
+      allow create: if canWriteOwnedCreate();
+      allow update: if signedIn() &&
+        resource.data.ownerId == request.auth.uid &&
+        immutableOwnedFields();
+    }
+
+    match /documents/{docId} {
+      allow read: if canReadOwnedRecord(resource.data.ownerId);
+      allow create: if canWriteOwnedCreate();
+      allow update: if signedIn() &&
+        resource.data.ownerId == request.auth.uid &&
+        immutableOwnedFields();
+    }
+
+    match /facilities/{docId} {
+      allow read: if canReadOwnedRecord(resource.data.ownerId);
+      allow create: if canWriteOwnedCreate();
+      allow update: if signedIn() &&
+        resource.data.ownerId == request.auth.uid &&
+        immutableOwnedFields();
+    }
+
+    match /installations/{docId} {
+      allow read: if canReadOwnedRecord(resource.data.ownerId);
+      allow create: if canWriteOwnedCreate();
+      allow update: if signedIn() &&
+        resource.data.ownerId == request.auth.uid &&
+        immutableOwnedFields();
+    }
+
+    match /productionBatches/{docId} {
+      allow read: if canReadOwnedRecord(resource.data.ownerId);
+      allow create: if canWriteOwnedCreate();
+      allow update: if signedIn() &&
+        resource.data.ownerId == request.auth.uid &&
+        immutableOwnedFields();
+    }
+
+    match /extractions/{docId} {
+      allow read: if canReadOwnedRecord(resource.data.ownerId);
+      allow create: if canWriteOwnedCreate();
+      allow update: if signedIn() &&
+        resource.data.ownerId == request.auth.uid &&
+        immutableOwnedFields();
+    }
+
+    match /auditLogs/{docId} {
+      allow read: if canReadOwnedRecord(resource.data.ownerId);
+      allow create: if canWriteOwnedCreate() || isVerifier();
+      allow update: if false;
+    }
+
+    match /shipments/{docId} {
+      allow read: if canReadOwnedRecord(resource.data.ownerId);
+      allow create: if canWriteOwnedCreate();
+      allow update: if (
+          signedIn() &&
+          !shipmentLocked() &&
+          resource.data.ownerId == request.auth.uid &&
+          immutableOwnedFields()
+        ) || (
+          !shipmentLocked() &&
+          isVerifier() &&
+          request.resource.data.ownerId == resource.data.ownerId &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          request.resource.data.invoiceId == resource.data.invoiceId &&
+          request.resource.data.product == resource.data.product &&
+          request.resource.data.productCategory == resource.data.productCategory &&
+          request.resource.data.hsCode == resource.data.hsCode &&
+          request.resource.data.destinationCountry == resource.data.destinationCountry &&
+          request.resource.data.quantity == resource.data.quantity &&
+          request.resource.data.unit == resource.data.unit &&
+          request.resource.data.supplierIds == resource.data.supplierIds &&
+          request.resource.data.plotIds == resource.data.plotIds &&
+          request.resource.data.documentIds == resource.data.documentIds &&
+          request.resource.data.facilityIds == resource.data.facilityIds &&
+          request.resource.data.installationIds == resource.data.installationIds &&
+          request.resource.data.batchIds == resource.data.batchIds &&
+          request.resource.data.energyNotes == resource.data.energyNotes &&
+          request.resource.data.additionalNotes == resource.data.additionalNotes &&
+          request.resource.data.report == resource.data.report
+        );
+    }
+
+    match /shipmentSnapshots/{docId} {
+      allow read: if canReadOwnedRecord(resource.data.ownerId);
+      allow create: if signedIn() &&
+        isVerifier() &&
+        shipmentDoc(request.resource.data.shipmentId).data.ownerId == request.resource.data.ownerId;
+      allow update: if false;
+    }
+
+    match /verificationCases/{docId} {
+      allow read: if signedIn() && (
+        canManageVerificationCase(resource.data.shipmentId) ||
+        isImporter()
+      );
+      allow create: if signedIn() &&
+        canManageVerificationCase(request.resource.data.shipmentId);
+      allow update: if signedIn() &&
+        canManageVerificationCase(resource.data.shipmentId) &&
+        request.resource.data.shipmentId == resource.data.shipmentId;
+    }
+
+    match /emissionFactors/{docId} {
+      allow read: if signedIn();
+      allow create, update: if isExporter() || isVerifier();
+    }
+
+    match /notifications/{docId} {
+      allow read: if signedIn() && (
+        resource.data.recipientUserId == request.auth.uid ||
+        (resource.data.recipientRole != null && userDoc().data.role == resource.data.recipientRole)
+      );
+      allow create: if signedIn() &&
+        request.resource.data.actorId == request.auth.uid &&
+        request.resource.data.actorRole == userDoc().data.role &&
+        (
+          request.resource.data.recipientUserId is string ||
+          validRole(request.resource.data.recipientRole)
+        );
+      allow update: if signedIn() &&
+        (
+          resource.data.recipientUserId == request.auth.uid ||
+          (resource.data.recipientRole != null && userDoc().data.role == resource.data.recipientRole)
+        ) &&
+        request.resource.data.actorId == resource.data.actorId &&
+        request.resource.data.actorRole == resource.data.actorRole &&
+        request.resource.data.title == resource.data.title &&
+        request.resource.data.message == resource.data.message &&
+        request.resource.data.level == resource.data.level &&
+        request.resource.data.route == resource.data.route &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.recipientUserId == resource.data.recipientUserId &&
+        request.resource.data.recipientRole == resource.data.recipientRole &&
+        request.resource.data.type == resource.data.type &&
+        request.resource.data.entityType == resource.data.entityType &&
+        request.resource.data.entityId == resource.data.entityId &&
+        request.resource.data.actorName == resource.data.actorName;
+    }
+
+    match /monitoringEvents/{docId} {
+      allow read: if signedIn() && (
+        resource.data.actorId == request.auth.uid ||
+        isVerifier()
+      );
+      allow create: if signedIn() &&
+        request.resource.data.actorId == request.auth.uid &&
+        request.resource.data.actorRole == userDoc().data.role;
+      allow update: if false;
+    }
+  }
+}

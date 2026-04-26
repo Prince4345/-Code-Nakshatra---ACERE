@@ -1,0 +1,5 @@
+{
+  "name": "AERCE_CORE Compliance Engine",
+  "description": "An industrial-grade EU Trade Compliance Engine for CBAM and EUDR, transforming raw exporter data into verifiable compliance outputs.",
+  "requestFramePermissions": []
+}

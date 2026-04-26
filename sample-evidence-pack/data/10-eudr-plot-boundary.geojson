@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "plotName": "Hassan Cluster 42/7A",
+        "commodity": "Coffee",
+        "supplier": "Malnad Highlands Farmer Producer Company",
+        "surveyNumber": "42/7A",
+        "countryOfProduction": "India",
+        "areaHectares": 6.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.0969, 13.0052],
+            [76.1012, 13.0054],
+            [76.1010, 13.0084],
+            [76.0971, 13.0080],
+            [76.0969, 13.0052]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+flask
+flask-cors
+earthengine-api
+google-api-python-client
+google-cloud-documentai
+gunicorn

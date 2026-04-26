@@ -1,0 +1,2 @@
+shipment_id,batch_code,facility,installation,product,quantity,unit,fuel_type,fuel_amount,fuel_unit,electricity_kwh,electricity_provider,evidence_files
+CT-CBAM-2026-117,SB-2026-117-A,Pune Green Steel Works,Electric Arc Furnace Line 02,Steel billets,82.4,tonnes,Diesel,5400,litres,18250,MSEDCL Industrial Supply,"01-msedcl-electricity-bill.pdf;02-bpcl-diesel-tax-invoice.pdf;07-production-batch-log.pdf"

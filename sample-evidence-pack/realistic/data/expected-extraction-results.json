@@ -1,0 +1,92 @@
+{
+  "01-msedcl-electricity-bill.pdf": {
+    "expectedDocumentType": "Electricity Bill",
+    "expectedFields": {
+      "utilityProvider": "MSEDCL Industrial Supply",
+      "consumerNumber": "99887711",
+      "meterNumber": "MTR-4402",
+      "billingDate": "31/03/2026",
+      "electricityKwh": "18,250",
+      "amount": "241,090"
+    }
+  },
+  "02-bpcl-diesel-tax-invoice.pdf": {
+    "expectedDocumentType": "Fuel Invoice",
+    "expectedFields": {
+      "invoiceReference": "FUEL-INV-2026-331",
+      "supplierName": "Bharat Petroleum Industrial Fuels",
+      "invoiceDate": "20/03/2026",
+      "fuelType": "Diesel",
+      "quantity": "5,400",
+      "unit": "litres",
+      "amount": "502,200"
+    }
+  },
+  "03-commercial-invoice-coffee-export.pdf": {
+    "expectedDocumentType": "Shipment Document",
+    "expectedFields": {
+      "invoiceReference": "CT-EUDR-2026-041",
+      "hsCode": "0901.11",
+      "supplierName": "Malnad Highlands Farmer Producer Company",
+      "destinationCountry": "Germany",
+      "quantity": "12.5",
+      "unit": "tonnes",
+      "amount": "48,750"
+    }
+  },
+  "04-eu-purchase-order.pdf": {
+    "expectedDocumentType": "Purchase Order",
+    "expectedFields": {
+      "purchaseOrderNumber": "PO-EU-77845",
+      "supplierName": "AERCE Agro Exports Pvt Ltd",
+      "orderDate": "01/04/2026",
+      "quantity": "12.5",
+      "unit": "tonnes",
+      "amount": "48,750"
+    }
+  },
+  "05-supplier-origin-declaration.pdf": {
+    "expectedDocumentType": "Supplier Declaration",
+    "expectedFields": {
+      "supplierName": "Malnad Highlands Farmer Producer Company",
+      "declarationDate": "02/04/2026",
+      "commodity": "Coffee",
+      "originCountry": "India",
+      "plotOrSurveyReference": "42/7A"
+    }
+  },
+  "06-land-record-extract.pdf": {
+    "expectedDocumentType": "Land Record",
+    "expectedFields": {
+      "ownerName": "Hassan Coffee Growers Collective",
+      "surveyNumber": "42/7A",
+      "location": "Belahonur, Hassan, Karnataka, India",
+      "latitudeReference": "13.0067",
+      "longitudeReference": "76.0991",
+      "polygonReference": "Present"
+    }
+  },
+  "07-production-batch-log.pdf": {
+    "expectedDocumentType": "Production Log",
+    "expectedFields": {
+      "batchCode": "SB-2026-117-A",
+      "installationName": "Electric Arc Furnace Line 02",
+      "product": "Steel billets",
+      "productionDate": "22/03/2026",
+      "quantity": "82.4",
+      "unit": "tonnes",
+      "fuelType": "Diesel",
+      "electricityKwh": "18,250"
+    }
+  },
+  "08-bill-of-lading-packing-list.pdf": {
+    "expectedDocumentType": "Shipment Document",
+    "expectedFields": {
+      "invoiceReference": "CT-EUDR-2026-041",
+      "hsCode": "0901.11",
+      "destinationCountry": "Germany",
+      "quantity": "12.5",
+      "unit": "tonnes"
+    }
+  }
+}

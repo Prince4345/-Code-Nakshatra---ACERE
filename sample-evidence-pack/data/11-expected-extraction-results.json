@@ -1,0 +1,85 @@
+{
+  "01-electricity-bill-pune-plant.pdf": {
+    "expectedDocumentType": "Electricity Bill",
+    "expectedFields": {
+      "utilityProvider": "MSEDCL Industrial Supply",
+      "consumerNumber": "99887711",
+      "meterNumber": "MTR-4402",
+      "electricityKwh": "18,250",
+      "amount": "154,220"
+    }
+  },
+  "02-diesel-fuel-invoice-eaf.pdf": {
+    "expectedDocumentType": "Fuel Invoice",
+    "expectedFields": {
+      "invoiceReference": "FUEL-INV-2026-331",
+      "supplierName": "Bharat Petroleum Industrial Fuels",
+      "fuelType": "Diesel",
+      "quantity": "5,400",
+      "unit": "litres",
+      "amount": "502,200"
+    }
+  },
+  "03-commercial-invoice-coffee-eudr.pdf": {
+    "expectedDocumentType": "Shipment Document",
+    "expectedFields": {
+      "invoiceReference": "CT-EUDR-2026-041",
+      "hsCode": "0901.11",
+      "destinationCountry": "Germany",
+      "quantity": "12.5",
+      "unit": "tonnes",
+      "amount": "48,750"
+    }
+  },
+  "04-purchase-order-netherlands-buyer.pdf": {
+    "expectedDocumentType": "Purchase Order",
+    "expectedFields": {
+      "purchaseOrderNumber": "PO-EU-77845",
+      "supplierName": "AERCE Agro Exports Pvt Ltd",
+      "quantity": "12.5",
+      "unit": "tonnes",
+      "amount": "48,750"
+    }
+  },
+  "05-supplier-declaration-coffee.pdf": {
+    "expectedDocumentType": "Supplier Declaration",
+    "expectedFields": {
+      "supplierName": "Malnad Highlands Farmer Producer Company",
+      "commodity": "Coffee",
+      "originCountry": "India",
+      "plotOrSurveyReference": "42/7A"
+    }
+  },
+  "06-land-record-hassan-cluster.pdf": {
+    "expectedDocumentType": "Land Record",
+    "expectedFields": {
+      "ownerName": "Hassan Coffee Growers Collective",
+      "surveyNumber": "42/7A",
+      "latitudeReference": "13.0067",
+      "longitudeReference": "76.0991",
+      "polygonReference": "Present"
+    }
+  },
+  "07-production-log-steel-batch.pdf": {
+    "expectedDocumentType": "Production Log",
+    "expectedFields": {
+      "batchCode": "SB-2026-117-A",
+      "installationName": "Electric Arc Furnace Line 02",
+      "product": "Steel billets",
+      "quantity": "82.4",
+      "unit": "tonnes",
+      "fuelType": "Diesel",
+      "electricityKwh": "18,250"
+    }
+  },
+  "08-packing-list-and-bill-of-lading.pdf": {
+    "expectedDocumentType": "Shipment Document",
+    "expectedFields": {
+      "invoiceReference": "CT-EUDR-2026-041",
+      "hsCode": "0901.11",
+      "destinationCountry": "Germany",
+      "quantity": "12.5",
+      "unit": "tonnes"
+    }
+  }
+}

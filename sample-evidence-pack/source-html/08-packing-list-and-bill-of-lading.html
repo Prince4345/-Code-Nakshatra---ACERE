@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Packing List and Bill of Lading</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="sheet">
+      <header class="topline">
+        <div>
+          <div class="brand">CarbonTrace AI Sample Evidence</div>
+          <h1>Packing List and Bill of Lading</h1>
+          <p class="note">Shipping evidence for importer handoff and final compliance package.</p>
+        </div>
+        <span class="pill">Shipment Document</span>
+      </header>
+
+      <section class="grid">
+        <div class="box"><span class="label">Bill of Lading No</span><span class="value">BL-HAM-2026-8842</span></div>
+        <div class="box"><span class="label">Invoice No</span><span class="value">CT-EUDR-2026-041</span></div>
+        <div class="box"><span class="label">Dispatch Date</span><span class="value">08/04/2026</span></div>
+        <div class="box"><span class="label">Consignee</span><span class="value">Nordsee Foods GmbH, Germany</span></div>
+      </section>
+
+      <section class="section">
+        <h2>Shipment Lines</h2>
+        <table>
+          <thead>
+            <tr><th>Goods</th><th>HS Code</th><th>Quantity</th><th>Origin Country</th><th>Destination</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Arabica coffee beans</td><td>0901.11</td><td>12.5 tonnes</td><td>India</td><td>Germany</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <footer class="footer">Expected extraction: documentType Shipment Document, invoiceReference CT-EUDR-2026-041, hsCode 0901.11, destinationCountry Germany, quantity 12.5, unit tonnes.</footer>
+    </main>
+  </body>
+</html>
