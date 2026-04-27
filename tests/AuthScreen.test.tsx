@@ -20,6 +20,7 @@ describe('AuthScreen', () => {
         busy={false}
         onSubmit={onSubmit}
         onToggleRoute={onToggleRoute}
+        onForgotPassword={vi.fn()}
       />,
     );
 
@@ -30,7 +31,7 @@ describe('AuthScreen', () => {
     fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'verifier' } });
     expect(setAuthRole).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText('Already have an account?'));
+    fireEvent.click(screen.getByText('Back to login'));
     expect(onToggleRoute).toHaveBeenCalledTimes(1);
   });
 
@@ -44,6 +45,7 @@ describe('AuthScreen', () => {
         busy={true}
         onSubmit={vi.fn(async (event: FormEvent<HTMLFormElement>) => event.preventDefault())}
         onToggleRoute={vi.fn()}
+        onForgotPassword={vi.fn()}
       />,
     );
 
@@ -51,5 +53,33 @@ describe('AuthScreen', () => {
     expect(screen.queryByLabelText('Full Name')).not.toBeInTheDocument();
     expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Please wait...' })).toBeDisabled();
+  });
+
+  it('renders password recovery without password or role fields', () => {
+    const onSubmit = vi.fn(async (event: FormEvent<HTMLFormElement>) => event.preventDefault());
+    const onToggleRoute = vi.fn();
+
+    render(
+      <AuthScreen
+        route="/forgot-password"
+        authRole="exporter"
+        setAuthRole={vi.fn()}
+        authError=""
+        authNotice="Reset link sent."
+        busy={false}
+        onSubmit={onSubmit}
+        onToggleRoute={onToggleRoute}
+        onForgotPassword={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Reset password' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toBeRequired();
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Role')).not.toBeInTheDocument();
+    expect(screen.getByText('Reset link sent.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Back to login'));
+    expect(onToggleRoute).toHaveBeenCalledTimes(1);
   });
 });

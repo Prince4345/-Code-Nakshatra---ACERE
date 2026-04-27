@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithCustomToken,
   signOut as firebaseSignOut,
@@ -219,6 +220,21 @@ export const loginWithEmail = async (email: string, password: string) => {
 export const loginWithMobileSessionToken = async (token: string) => {
   const credential = await signInWithCustomToken(auth, token);
   return hydrateUser(credential.user);
+};
+
+export const resetPasswordWithEmail = async (email: string) => {
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) throw new Error('Work email is required.');
+
+  const actionSettings =
+    typeof window !== 'undefined'
+      ? {
+          url: `${window.location.origin}/login`,
+          handleCodeInApp: false,
+        }
+      : undefined;
+
+  await sendPasswordResetEmail(auth, trimmedEmail, actionSettings);
 };
 
 export const signupWithEmail = async (email: string, password: string, role: UserRole, name: string) => {

@@ -31,6 +31,7 @@ import {
   loginWithMobileSessionToken,
   markNotificationReadInFirebase,
   logoutUser,
+  resetPasswordWithEmail,
   saveAuditLog,
   saveCompanyProfileToFirebase,
   saveDocumentRecordToFirebase,
@@ -176,6 +177,7 @@ type Route =
   | '/'
   | '/login'
   | '/signup'
+  | '/forgot-password'
   | '/pricing'
   | '/app/exporter/dashboard'
   | '/app/exporter/profile'
@@ -261,10 +263,18 @@ const DEFAULT_ROUTE_BY_ROLE: Record<UserRole, Route> = {
   importer: '/app/importer/dashboard',
 };
 
+const PUBLIC_ROUTES = ['/', '/login', '/signup', '/forgot-password', '/pricing'] as const;
+
+const isPublicRoute = (path: Route) => PUBLIC_ROUTES.includes(path as (typeof PUBLIC_ROUTES)[number]);
+
+const isRouteAllowedForRole = (path: Route, role: UserRole) =>
+  NAV[role].some((item) => item.path === path);
+
 const isKnownRoute = (path: string): path is Route =>
   path === '/' ||
   path === '/login' ||
   path === '/signup' ||
+  path === '/forgot-password' ||
   path === '/pricing' ||
   Object.values(NAV).some((items) => items.some((item) => item.path === path));
 
@@ -833,6 +843,7 @@ const App: React.FC = () => {
   const [route, navigate] = useRoute();
   const [themeMode, setThemeMode] = useState<ThemeMode>(resolveInitialTheme);
   const [session, setSession] = useState<SessionUser | null>(null);
+  const [sessionRestored, setSessionRestored] = useState(false);
   const [mobileSessionBooting, setMobileSessionBooting] = useState(
     () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has(MOBILE_SESSION_QUERY_KEY),
   );
@@ -858,6 +869,7 @@ const App: React.FC = () => {
   const [demoBusy, setDemoBusy] = useState(false);
   const [authRole, setAuthRole] = useState<UserRole>('exporter');
   const [authError, setAuthError] = useState('');
+  const [authNotice, setAuthNotice] = useState('');
   const [showMoreTools, setShowMoreTools] = useState(false);
   const [showDemoWalkthrough, setShowDemoWalkthrough] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -936,7 +948,19 @@ const App: React.FC = () => {
   const showChecklistNotice = (title: string, items: string[], tone: WorkspaceNoticeTone = 'warn') =>
     showWorkspaceNotice(title, toFriendlyChecklist('Fix these items first:', items), tone);
 
-  useEffect(() => subscribeToSession(setSession), []);
+  useEffect(
+    () =>
+      subscribeToSession((nextSession) => {
+        setSession(nextSession);
+        setSessionRestored(true);
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    setAuthError('');
+    setAuthNotice('');
+  }, [route]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -963,7 +987,7 @@ const App: React.FC = () => {
 
     let cancelled = false;
     setMobileSessionBooting(true);
-    setAuthError(null);
+    setAuthError('');
 
     const complete = async () => {
       try {
@@ -1182,10 +1206,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!session) {
+      if (!sessionRestored) return;
       if (mobileSessionBooting) return;
       if (route.startsWith('/app/')) navigate('/');
       return;
     }
+    if (isPublicRoute(route) || !isRouteAllowedForRole(route, session.role)) return;
     let cancelled = false;
     const load = async () => {
       setWorkspaceLoading(true);
@@ -1213,11 +1239,11 @@ const App: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [session, route, mobileSessionBooting]);
+  }, [session, sessionRestored, route, mobileSessionBooting]);
 
   useEffect(() => {
     if (!session) return;
-    if (route === '/' || route === '/login' || route === '/signup' || route === '/pricing') {
+    if (isPublicRoute(route) || !isRouteAllowedForRole(route, session.role)) {
       navigate(DEFAULT_ROUTE_BY_ROLE[session.role]);
     }
   }, [session, route]);
@@ -2225,13 +2251,21 @@ const App: React.FC = () => {
   const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setAuthError('');
+    setAuthNotice('');
     setBusy(true);
     const form = new FormData(event.currentTarget);
     try {
-      if (route === '/signup') await signupWithEmail(String(form.get('email')), String(form.get('password')), authRole, String(form.get('name') || 'CarbonTrace User'));
-      else await loginWithEmail(String(form.get('email')), String(form.get('password')));
+      const email = String(form.get('email') || '').trim();
+      if (route === '/signup') {
+        await signupWithEmail(email, String(form.get('password')), authRole, String(form.get('name') || 'CarbonTrace User'));
+      } else if (route === '/forgot-password') {
+        await resetPasswordWithEmail(email);
+        setAuthNotice('Reset link sent. Check your email, then return to login.');
+      } else {
+        await loginWithEmail(email, String(form.get('password')));
+      }
     } catch (error) {
-      setAuthError(toFriendlyMessage(error, 'Authentication could not be completed right now.'));
+      setAuthError(toFriendlyMessage(error, route === '/forgot-password' ? 'Password reset could not be sent right now.' : 'Authentication could not be completed right now.'));
     } finally {
       setBusy(false);
     }
@@ -2852,6 +2886,15 @@ const App: React.FC = () => {
   };
 
   if (!session) {
+    if (!sessionRestored && route.startsWith('/app/')) {
+      return (
+        <WebErrorBoundary>
+          <div className="ct-auth-theme-shell">
+            <WorkspaceLoadingState title="Restoring workspace" detail="Checking your secure CarbonTrace session." />
+          </div>
+        </WebErrorBoundary>
+      );
+    }
     if (mobileSessionBooting) {
       return (
         <WebErrorBoundary>
@@ -2891,7 +2934,17 @@ const App: React.FC = () => {
           <button className="ct-theme-toggle is-floating" type="button" onClick={toggleThemeMode}>
             {themeMode === 'dark' ? 'Light mode' : 'Dark mode'}
           </button>
-          <AuthScreen route={route === '/signup' ? '/signup' : '/login'} authRole={authRole} setAuthRole={setAuthRole} authError={authError} busy={busy} onSubmit={handleAuthSubmit} onToggleRoute={() => navigate(route === '/signup' ? '/login' : '/signup')} />
+          <AuthScreen
+            route={route === '/signup' || route === '/forgot-password' ? route : '/login'}
+            authRole={authRole}
+            setAuthRole={setAuthRole}
+            authError={authError}
+            authNotice={authNotice}
+            busy={busy}
+            onSubmit={handleAuthSubmit}
+            onToggleRoute={() => navigate(route === '/login' ? '/signup' : '/login')}
+            onForgotPassword={() => navigate('/forgot-password')}
+          />
         </div>
       </WebErrorBoundary>
     );
