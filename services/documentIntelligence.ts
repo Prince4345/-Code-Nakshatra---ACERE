@@ -1,5 +1,7 @@
+import { httpsCallable } from 'firebase/functions';
 import { DocumentRecord, ExtractionRecord } from '../types';
 import { deriveExtractionFromDocument } from './complianceToolkit';
+import { functions } from './firebase';
 
 const OCR_IMAGE_EXTENSIONS = /\.(png|jpe?g|webp|bmp|gif|tiff?)$/i;
 const API_BASE_URL = (import.meta.env.VITE_GEE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
@@ -8,6 +10,8 @@ const canRunImageOcr = (document: DocumentRecord) =>
   Boolean(document.previewUrl) && OCR_IMAGE_EXTENSIONS.test(`${document.fileName} ${document.previewUrl}`);
 
 type BackendOcrPayload = {
+  skipped?: boolean;
+  reason?: string;
   rawText: string;
   confidence?: number;
   provider?: ExtractionRecord['provider'];
@@ -16,6 +20,49 @@ type BackendOcrPayload = {
   warnings?: string[];
   pageCount?: number | null;
   sourceMimeType?: string;
+  entities?: Array<{ type: string; value: string; confidence?: number }>;
+};
+
+const documentAiCallable = httpsCallable<{ documentId: string; mimeType?: string }, BackendOcrPayload>(
+  functions,
+  'extractDocumentWithDocumentAi',
+);
+
+const applyOcrPayload = (
+  payload: BackendOcrPayload | null,
+  current: {
+    rawText: string;
+    ocrConfidence: number;
+    provider: ExtractionRecord['provider'];
+    providerModel: string;
+    warnings: string[];
+    detectedDocumentType: string;
+    pageCount?: number;
+    sourceMimeType: string;
+  },
+) => {
+  if (!payload) return current;
+
+  const nextWarnings = [...current.warnings, ...(payload.warnings ?? [])];
+
+  if (!payload.rawText?.trim()) {
+    return {
+      ...current,
+      warnings: payload.skipped && payload.reason ? [...nextWarnings, payload.reason] : nextWarnings,
+      detectedDocumentType: payload.detectedDocumentType ?? current.detectedDocumentType,
+    };
+  }
+
+  return {
+    rawText: payload.rawText.trim(),
+    ocrConfidence: payload.confidence ?? current.ocrConfidence,
+    provider: payload.provider ?? current.provider,
+    providerModel: payload.providerModel ?? current.providerModel,
+    warnings: nextWarnings,
+    detectedDocumentType: payload.detectedDocumentType ?? current.detectedDocumentType,
+    pageCount: payload.pageCount ?? current.pageCount,
+    sourceMimeType: payload.sourceMimeType ?? current.sourceMimeType,
+  };
 };
 
 export const extractDocumentIntelligence = async (
@@ -31,6 +78,33 @@ export const extractDocumentIntelligence = async (
   let sourceMimeType = '';
 
   if (document.previewUrl) {
+    try {
+      const response = await documentAiCallable({ documentId: document.id });
+      const next = applyOcrPayload(response.data ?? null, {
+        rawText,
+        ocrConfidence,
+        provider,
+        providerModel,
+        warnings,
+        detectedDocumentType,
+        pageCount,
+        sourceMimeType,
+      });
+      rawText = next.rawText;
+      ocrConfidence = next.ocrConfidence;
+      provider = next.provider;
+      providerModel = next.providerModel;
+      warnings = next.warnings;
+      detectedDocumentType = next.detectedDocumentType;
+      pageCount = next.pageCount;
+      sourceMimeType = next.sourceMimeType;
+    } catch (error) {
+      console.warn('Document AI extraction unavailable, trying backend OCR fallback.', error);
+      warnings = ['Document AI unavailable; backup extraction path used.'];
+    }
+  }
+
+  if (document.previewUrl && provider !== 'document-ai') {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 90_000);
     try {
@@ -48,16 +122,24 @@ export const extractDocumentIntelligence = async (
 
       const payload = (await response.json().catch(() => null)) as BackendOcrPayload | null;
       if (response.ok) {
-        if (payload?.rawText?.trim()) {
-          rawText = payload.rawText.trim();
-          ocrConfidence = payload.confidence ?? ocrConfidence;
-          provider = payload.provider ?? provider;
-          providerModel = payload.providerModel ?? providerModel;
-          warnings = payload.warnings ?? warnings;
-          detectedDocumentType = payload.detectedDocumentType ?? detectedDocumentType;
-          pageCount = payload.pageCount ?? undefined;
-          sourceMimeType = payload.sourceMimeType ?? sourceMimeType;
-        }
+        const next = applyOcrPayload(payload, {
+          rawText,
+          ocrConfidence,
+          provider,
+          providerModel,
+          warnings,
+          detectedDocumentType,
+          pageCount,
+          sourceMimeType,
+        });
+        rawText = next.rawText;
+        ocrConfidence = next.ocrConfidence;
+        provider = next.provider;
+        providerModel = next.providerModel;
+        warnings = next.warnings;
+        detectedDocumentType = next.detectedDocumentType;
+        pageCount = next.pageCount;
+        sourceMimeType = next.sourceMimeType;
       } else {
         warnings = [
           ...(payload?.warnings ?? []),

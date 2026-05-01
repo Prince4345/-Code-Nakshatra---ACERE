@@ -1,6 +1,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
+const { DocumentProcessorServiceClient } = require('@google-cloud/documentai').v1;
 const nodemailer = require('nodemailer');
 
 const region = 'us-central1';
@@ -16,8 +17,15 @@ const SMTP_PASSWORD = (process.env.SMTP_PASSWORD || '').trim();
 const SMTP_FROM_EMAIL = (process.env.SMTP_FROM_EMAIL || SMTP_USERNAME).trim();
 const SMTP_FROM_NAME = (process.env.SMTP_FROM_NAME || 'CarbonTrace AI').trim();
 const SMTP_USE_TLS = String(process.env.SMTP_USE_TLS || 'true').toLowerCase() !== 'false';
+const DOC_AI_PROJECT_ID = (process.env.DOC_AI_PROJECT_ID || process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || '').trim();
+const DOC_AI_LOCATION = (process.env.DOC_AI_LOCATION || 'us').trim();
+const DOC_AI_PROCESSOR_ID = (process.env.DOC_AI_PROCESSOR_ID || '').trim();
+const DOC_AI_PROCESSOR_VERSION_ID = (process.env.DOC_AI_PROCESSOR_VERSION_ID || '').trim();
+const APP_BASE_URL = String(process.env.APP_BASE_URL || 'https://acere4345.web.app').replace(/\/$/, '');
+const MAX_DOCUMENT_BYTES = 18 * 1024 * 1024;
 
 const emailConfigured = () => Boolean(SMTP_HOST && SMTP_FROM_EMAIL);
+const documentAiConfigured = () => Boolean(DOC_AI_PROJECT_ID && DOC_AI_LOCATION && DOC_AI_PROCESSOR_ID);
 
 const EMAIL_FIXES = {
   'pincu77077@gmail.com': 'pincu7706@gmail.com',
@@ -77,6 +85,130 @@ const escapeHtml = (value) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+
+const getMimeType = (fileName = '', fallback = '') => {
+  const normalized = `${fileName}`.toLowerCase();
+  if (fallback && fallback.includes('/')) return fallback;
+  if (normalized.endsWith('.pdf')) return 'application/pdf';
+  if (normalized.endsWith('.png')) return 'image/png';
+  if (normalized.endsWith('.jpg') || normalized.endsWith('.jpeg')) return 'image/jpeg';
+  if (normalized.endsWith('.tif') || normalized.endsWith('.tiff')) return 'image/tiff';
+  if (normalized.endsWith('.webp')) return 'image/webp';
+  return 'application/pdf';
+};
+
+const isDocumentAiSupportedMime = (mimeType = '') =>
+  [
+    'application/pdf',
+    'image/png',
+    'image/jpeg',
+    'image/tiff',
+    'image/gif',
+    'image/webp',
+  ].some((supported) => mimeType.toLowerCase().startsWith(supported));
+
+const buildAbsoluteUrl = (url = '') => {
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith('/')) return `${APP_BASE_URL}${url}`;
+  return url;
+};
+
+const parseFirebaseStoragePath = (downloadUrl = '') => {
+  try {
+    const url = new URL(downloadUrl);
+    const marker = '/o/';
+    const markerIndex = url.pathname.indexOf(marker);
+    if (markerIndex === -1) return '';
+    return decodeURIComponent(url.pathname.slice(markerIndex + marker.length));
+  } catch (error) {
+    return '';
+  }
+};
+
+const downloadDocumentBuffer = async (document) => {
+  const storagePath = parseFirebaseStoragePath(document.previewUrl);
+
+  if (storagePath) {
+    const [buffer] = await admin.storage().bucket().file(storagePath).download();
+    return { buffer, sourceMimeType: '' };
+  }
+
+  if (!document.previewUrl) {
+    throw new HttpsError('failed-precondition', 'This document does not have a source file attached.');
+  }
+
+  const sourceUrl = buildAbsoluteUrl(document.previewUrl);
+  const response = await fetch(sourceUrl);
+  if (!response.ok) {
+    throw new HttpsError('unavailable', 'The document source could not be downloaded for OCR.');
+  }
+
+  return {
+    buffer: Buffer.from(await response.arrayBuffer()),
+    sourceMimeType: response.headers.get('content-type') || '',
+  };
+};
+
+const getTextAnchorContent = (text = '', textAnchor = {}) => {
+  const segments = Array.isArray(textAnchor.textSegments) ? textAnchor.textSegments : [];
+  return segments
+    .map((segment) => {
+      const start = Number(segment.startIndex || 0);
+      const end = Number(segment.endIndex || 0);
+      return text.slice(start, end);
+    })
+    .join('')
+    .trim();
+};
+
+const normalizeDocumentAiEntity = (entity, documentText) => {
+  const value =
+    String(entity.normalizedValue?.text || '').trim() ||
+    String(entity.mentionText || '').trim() ||
+    getTextAnchorContent(documentText, entity.textAnchor);
+
+  return {
+    type: String(entity.type || 'field').trim(),
+    mentionText: String(entity.mentionText || '').trim(),
+    normalizedText: String(entity.normalizedValue?.text || '').trim(),
+    value,
+    confidence: Number((entity.confidence || 0).toFixed(3)),
+  };
+};
+
+const inferDocumentTypeFromEntities = (fileName, selectedType, entities) => {
+  const haystack = `${fileName} ${selectedType} ${entities.map((entity) => `${entity.type} ${entity.value}`).join(' ')}`.toLowerCase();
+  if (/electric|discom|meter|kwh|utility/.test(haystack)) return 'Electricity Bill';
+  if (/diesel|fuel|petrol|gas|coal|litre|liter/.test(haystack)) return 'Fuel Invoice';
+  if (/purchase order|\bpo\b|buyer/.test(haystack)) return 'Purchase Order';
+  if (/bill of lading|packing|container|shipment|hs code|customs/.test(haystack)) return 'Shipment Document';
+  if (/supplier declaration|origin declaration|farm|producer/.test(haystack)) return 'Supplier Declaration';
+  if (/land|survey|khasra|plot|village|geojson|polygon/.test(haystack)) return 'Land Record';
+  if (/production|batch|furnace|installation|line/.test(haystack)) return 'Production Log';
+  return selectedType || 'General Document';
+};
+
+const buildDocumentAiRawText = (documentText, entities) => {
+  const entityLines = entities
+    .filter((entity) => entity.type && entity.value)
+    .map((entity) => `${entity.type}: ${entity.value}`);
+
+  return [documentText, entityLines.length ? '\nExtracted entities:\n' + entityLines.join('\n') : '']
+    .join('\n')
+    .trim();
+};
+
+const getDocumentAiClient = (() => {
+  let client;
+  return () => {
+    if (!client) {
+      client = new DocumentProcessorServiceClient({
+        apiEndpoint: `${DOC_AI_LOCATION}-documentai.googleapis.com`,
+      });
+    }
+    return client;
+  };
+})();
 
 const getEmailTone = ({ badge, title }) => {
   const value = `${badge || ''} ${title || ''}`.toLowerCase();
@@ -332,6 +464,117 @@ exports.createMobileWorkspaceSession = onCall({ region, cors: true }, async (req
     appBaseUrl: String(process.env.APP_BASE_URL || 'https://acere4345.web.app').trim(),
   };
 });
+
+exports.extractDocumentWithDocumentAi = onCall(
+  { region, cors: true, timeoutSeconds: 120, memory: '1GiB' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'You must be signed in to extract document data.');
+    }
+
+    if (!documentAiConfigured()) {
+      logger.warn('Document AI is not configured; extraction skipped.', { actorId: request.auth.uid });
+      return {
+        skipped: true,
+        reason: 'Document AI is not configured.',
+        rawText: '',
+        confidence: 0,
+        provider: 'heuristic',
+        providerModel: '',
+        detectedDocumentType: '',
+        warnings: ['Document AI is not configured; local extraction fallback was used.'],
+        pageCount: null,
+        sourceMimeType: '',
+        entities: [],
+      };
+    }
+
+    const documentId = String(request.data?.documentId || '').trim();
+    if (!documentId) {
+      throw new HttpsError('invalid-argument', 'Document ID is required.');
+    }
+
+    const documentSnap = await admin.firestore().collection('documents').doc(documentId).get();
+    if (!documentSnap.exists) {
+      throw new HttpsError('not-found', 'Document record was not found.');
+    }
+
+    const document = { id: documentSnap.id, ...documentSnap.data() };
+    if (document.ownerId !== request.auth.uid) {
+      throw new HttpsError('permission-denied', 'You can only extract documents from your own workspace.');
+    }
+
+    const { buffer, sourceMimeType } = await downloadDocumentBuffer(document);
+    if (buffer.length > MAX_DOCUMENT_BYTES) {
+      throw new HttpsError('invalid-argument', 'Document is too large for online extraction. Use a smaller PDF or image.');
+    }
+
+    const mimeType = getMimeType(document.fileName, request.data?.mimeType || sourceMimeType || document.sourceMimeType || '');
+    if (!isDocumentAiSupportedMime(mimeType)) {
+      return {
+        skipped: true,
+        reason: `Document AI supports PDF/image files, not ${mimeType}.`,
+        rawText: '',
+        confidence: 0,
+        provider: 'heuristic',
+        providerModel: '',
+        detectedDocumentType: document.documentType || '',
+        warnings: [`Document AI skipped this source type (${mimeType}); fallback extraction was used.`],
+        pageCount: null,
+        sourceMimeType: mimeType,
+        entities: [],
+      };
+    }
+
+    const client = getDocumentAiClient();
+    const processorName = DOC_AI_PROCESSOR_VERSION_ID
+      ? client.processorVersionPath(DOC_AI_PROJECT_ID, DOC_AI_LOCATION, DOC_AI_PROCESSOR_ID, DOC_AI_PROCESSOR_VERSION_ID)
+      : client.processorPath(DOC_AI_PROJECT_ID, DOC_AI_LOCATION, DOC_AI_PROCESSOR_ID);
+
+    const [result] = await client.processDocument({
+      name: processorName,
+      rawDocument: {
+        content: buffer.toString('base64'),
+        mimeType,
+      },
+    });
+
+    const processedDocument = result.document || {};
+    const documentText = String(processedDocument.text || '').trim();
+    const entities = (processedDocument.entities || [])
+      .map((entity) => normalizeDocumentAiEntity(entity, documentText))
+      .filter((entity) => entity.type && entity.value)
+      .slice(0, 80);
+    const confidenceValues = entities.map((entity) => entity.confidence).filter((value) => Number.isFinite(value) && value > 0);
+    const confidence = confidenceValues.length
+      ? Number((confidenceValues.reduce((sum, value) => sum + value, 0) / confidenceValues.length).toFixed(2))
+      : Number((processedDocument.pages?.[0]?.detectedLanguages?.[0]?.confidence || 0.82).toFixed(2));
+    const pageCount = Array.isArray(processedDocument.pages) ? processedDocument.pages.length : null;
+    const detectedDocumentType = inferDocumentTypeFromEntities(document.fileName, document.documentType, entities);
+    const rawText = buildDocumentAiRawText(documentText, entities);
+
+    logger.info('Document AI extraction completed.', {
+      actorId: request.auth.uid,
+      documentId,
+      pageCount,
+      entityCount: entities.length,
+      detectedDocumentType,
+    });
+
+    return {
+      skipped: false,
+      rawText,
+      confidence,
+      provider: 'document-ai',
+      providerModel: `document-ai:${DOC_AI_LOCATION}:${DOC_AI_PROCESSOR_ID}`,
+      detectedDocumentType,
+      warnings: entities.length ? [] : ['Document AI returned text but no structured entities; review fields manually.'],
+      pageCount,
+      sourceMimeType: mimeType,
+      entities,
+    };
+  },
+);
 
 exports.sendWorkflowEmail = onCall({ region, cors: true }, async (request) => {
   if (!request.auth) {

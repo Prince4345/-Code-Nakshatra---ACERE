@@ -104,7 +104,7 @@ The backend exposes:
 
 ## Firebase Functions
 
-Email notifications now run through Firebase Functions instead of Flask.
+Email notifications and production OCR run through Firebase Functions instead of exposing service credentials in the frontend.
 
 Files:
 
@@ -117,8 +117,13 @@ Files:
 1. Install dependencies:
    `cd functions && npm install`
 2. Copy [functions/.env.example](C:/Users/pincu/Downloads/aerce_core-compliance-engine/functions/.env.example) to `functions/.env`
-3. Deploy:
+3. For production OCR, create a Google Document AI processor and set `DOC_AI_PROJECT_ID`, `DOC_AI_LOCATION`, and `DOC_AI_PROCESSOR_ID` in `functions/.env`.
+4. Deploy:
    `firebase deploy --only functions`
+
+### Document AI OCR Flow
+
+The extraction screen calls the callable function `extractDocumentWithDocumentAi`. The function verifies the signed-in user owns the Firestore document, downloads the uploaded file from Firebase Storage, sends it to Google Document AI, and returns text, detected type, confidence, page count, and extracted entities. The frontend then saves the structured extraction review in Firestore. If Document AI is not configured or temporarily fails, the app falls back to the existing backend/browser extraction path so demos do not break.
 
 ## Environment Variables
 
@@ -151,12 +156,17 @@ Files:
 - `SMTP_FROM_EMAIL`
 - `SMTP_FROM_NAME`
 - `SMTP_USE_TLS`
+- `DOC_AI_PROJECT_ID`
+- `DOC_AI_LOCATION`
+- `DOC_AI_PROCESSOR_ID`
+- `DOC_AI_PROCESSOR_VERSION_ID` optional
 
 ## Notes
 
 - Keep the Earth Engine service account JSON private.
+- Keep Document AI processor IDs and service-account permissions in Firebase Functions only; do not expose them in frontend environment variables.
 - Firebase web config can live in the frontend, but Firestore and Storage rules should be reviewed before public deployment.
 - The app uses SPA rewrites, so direct deep links like `/app/exporter/shipments` work correctly on Firebase Hosting.
-- Email notifications are now supported through Firebase Functions. If SMTP is not configured there, in-app notifications still work and email delivery will be skipped safely.
+- Email notifications and OCR are supported through Firebase Functions. If SMTP or Document AI is not configured there, in-app notifications and fallback extraction still work safely.
 - Current live frontend:
   [https://acere4345.web.app](https://acere4345.web.app)
